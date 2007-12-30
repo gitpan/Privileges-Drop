@@ -1,0 +1,21 @@
+---
+name: Privileges-Drop
+version: 1.00
+author:
+  - 'Troels Liebe Bentsen <troels@infopro.dk>'
+abstract: |-
+  A module to make it simple to drop all privileges, even 
+  POSIX groups.
+license: perl
+resources:
+  license: http://dev.perl.org/licenses/
+build_requires:
+  Test::More: 0
+provides:
+  Privileges::Drop:
+    file: lib/Privileges/Drop.pm
+    version: 1.00
+generated_by: Module::Build version 0.2808
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2
