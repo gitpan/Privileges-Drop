@@ -4,7 +4,7 @@ use warnings;
 use English;
 use Carp;
 
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
 =head1 NAME
 
@@ -50,27 +50,26 @@ Supplementary groups can be set in @groups.
 =cut
 
 sub drop_uidgid {
-    my ($uid, $gid, @groups) = @_;
-   
-    # Sort the groups and make sure they are uniq 
-    my %groups = map { $_ => 1 } grep { $_ ne $gid } (@groups);
-    my $newgid ="$gid ".join(" ", sort { $a <=> $b} keys %groups);
+    my ($uid, $gid, @reqPosixGroups) = @_;
     
+    # Sort the groups and make sure they are uniq
+    my %groupHash = map { $_ => 1 } ($gid, @reqPosixGroups);
+    my $newgid ="$gid ".join(" ", sort { $a <=> $b } (keys %groupHash));
+
     # Drop privileges to $uid and $gid for both effective and save uid/gid
     $GID = $EGID = $newgid;
     $UID = $EUID = $uid;
-    
-    # Perl adds $gid two time to the list so it also gets set in posix groups
-    $newgid ="$gid ".join(" ", sort { $a <=> $b} keys %groups, $gid);
 
     # Sort the output so we can compare it
-    my $cgid = int($GID)." ".join(" ", sort { $a <=> $b } split(/\s/, $GID));
-    my $cegid = int($EGID)." ".join(" ", sort { $a <=> $b } split(/\s/, $EGID));
+    my %GIDHash = map { $_ => 1 } ($gid, split(/\s/, $GID));
+    my $cgid = int($GID)." ".join(" ", sort { $a <=> $b } (keys %GIDHash));
+    my %EGIDHash = map { $_ => 1 } ($gid, split(/\s/, $EGID));
+    my $cegid = int($EGID)." ".join(" ", sort { $a <=> $b } (keys %EGIDHash));
     
     # Check that we did actually drop the privileges
-    if($UID ne $uid or $EUID ne $uid or $cgid ne $newgid or $cgid ne $newgid) {
-        croak("Could not set current uid:$UID, gid:$cgid, euid=$EUID, egid=$cegid "
-            ."to uid:$uid, gid:$newgid");
+    if($UID ne $uid or $EUID ne $uid or $cgid ne $newgid or $cegid ne $newgid) {
+        croak("Could not drop privileges to uid:$uid, gid:$newgid\n"
+            ."Currently is: UID:$UID, EUID=$EUID, GID=$cgid, EGID=$cegid\n");
     }
 }
 
@@ -85,22 +84,24 @@ values returned by getpwname.
 Returns the $uid and $gid on success and dies on error.
 
 NOTE: If drop_privileges() is called when you don't have root privileges
-it will just return the current $uid, $gid;
+it will just return undef;
 
 =cut
 
 sub drop_privileges {
     my ($user) = @_;
+    
+    croak "No user give" if !defined $user;
 
     # Check if we are root and stop if we are not.
-    if($UID != 0 and $EUID != 0 and $GID =~ /0/ and $EGID =~ /0/) {
-        return ($UID, $GID);
+    if($UID != 0 and $EUID != 0) {
+        return;
     }
     
     # Find user in passwd file
     my ($uid, $gid, $home, $shell) = (getpwnam($user))[2,3,7,8];
     if(!defined $uid or !defined $gid) {
-        croak("Could not find uid and gid user:$user");
+        croak("Could not find uid and gid user $user");
     }
 
     # Find all the groups the user is a member of
@@ -138,7 +139,7 @@ Troels Liebe Bentsen <tlb@rapanden.dk>
 
 =head1 COPYRIGHT
 
-Copyright(C) 2007 Troels Liebe Bentsen
+Copyright(C) 2007-2009 Troels Liebe Bentsen
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

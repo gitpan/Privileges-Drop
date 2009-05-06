@@ -1,6 +1,6 @@
 ---
 name: Privileges-Drop
-version: 1.00
+version: 1.01
 author:
   - 'Troels Liebe Bentsen <troels@infopro.dk>'
 abstract: |-
@@ -9,13 +9,17 @@ abstract: |-
 license: perl
 resources:
   license: http://dev.perl.org/licenses/
+requires:
+  Carp: 0
+  English: 0
+  perl: '>= 5.8.0'
 build_requires:
   Test::More: 0
 provides:
   Privileges::Drop:
     file: lib/Privileges/Drop.pm
-    version: 1.00
-generated_by: Module::Build version 0.2808
+    version: 1.01
+generated_by: Module::Build version 0.280801
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html
   version: 1.2
