@@ -1,10 +1,10 @@
 package Privileges::Drop;
 use strict;
 use warnings;
-use English;
+use English qw( -no_match_vars );
 use Carp;
 
-our $VERSION = '1.01';
+our $VERSION = '1.03';
 
 =head1 NAME
 
@@ -16,7 +16,8 @@ POSIX groups.
 This module tries to simplify the process of dropping privileges. This can be
 useful when your Perl program needs to bind to privileged ports, etc. This
 module is much like Proc::UID, except that it's implemented in pure Perl.
-
+Special care has been taken to also drop saved uid on platforms that support
+this, currently only test on on Linux.
 
 =head1 SYNOPSIS
   
@@ -56,9 +57,35 @@ sub drop_uidgid {
     my %groupHash = map { $_ => 1 } ($gid, @reqPosixGroups);
     my $newgid ="$gid ".join(" ", sort { $a <=> $b } (keys %groupHash));
 
-    # Drop privileges to $uid and $gid for both effective and save uid/gid
-    $GID = $EGID = $newgid;
-    $UID = $EUID = $uid;
+    # Description from:
+    # http://www.mail-archive.com/perl5-changes@perl.org/msg02683.html
+    #
+    # According to Stevens' APUE and various
+    # (BSD, Solaris, HP-UX) man pages setting
+    # the real uid first and effective uid second
+    # is the way to go if one wants to drop privileges,
+    # because if one changes into an effective uid of
+    # non-zero, one cannot change the real uid any more.
+    #
+    # Actually, it gets even messier.  There is
+    # a third uid, called the saved uid, and as
+    # long as that is zero, one can get back to
+    # uid of zero.  Setting the real-effective *twice*
+    # helps in *most* systems (FreeBSD and Solaris)
+    # but apparently in HP-UX even this doesn't help:
+    # the saved uid stays zero (apparently the only way
+    # in HP-UX to change saved uid is to call setuid()
+    # when the effective uid is zero).
+
+    # Drop privileges to $uid and $gid for both effective and saved uid/gid
+    ($GID) = split /\s/, $newgid;
+    $EGID = $newgid;
+    $EUID = $UID = $uid;
+
+    # To overwrite the saved UID on all platforms we need to do it twice
+    ($GID) = split /\s/, $newgid;
+    $EGID = $newgid;
+    $EUID = $UID = $uid;
 
     # Sort the output so we can compare it
     my %GIDHash = map { $_ => 1 } ($gid, split(/\s/, $GID));
